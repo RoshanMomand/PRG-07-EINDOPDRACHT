@@ -3,10 +3,10 @@ import {Pressable, ScrollView, StyleSheet, Text, View} from "react-native";
 import * as Location from 'expo-location';
 import {useEffect, useState} from "react";
 
-export default function MapsScreen({item, route}) {
-
+export default function MapsScreen({item, route, darkMode}) {
     const {selectedGym} = route?.params || {}
-    const [highlightedGym,setHighlightedGym] = useState(null)
+
+    const [highlightedGym, setHighlightedGym] = useState(null)
     const [location, setLocation] = useState(null)
     const [gymLocations, setGymLocations] = useState([])
 
@@ -56,11 +56,11 @@ export default function MapsScreen({item, route}) {
 
         fetchGyms();
         getCurrentLocation();
-        if(selectedGym){
+        if (selectedGym) {
             setHighlightedGym(selectedGym)
-            setTimeout(()=>{
+            setTimeout(() => {
                 setHighlightedGym(null)
-            },4000)
+            }, 4000)
             // SelectedGym contains the object with the info
         }
 
@@ -80,6 +80,7 @@ export default function MapsScreen({item, route}) {
 
             </ScrollView>
             <MapView
+                userInterfaceStyle={darkMode ? 'dark' : 'light'}
                 style={styles.map}
                 showsUserLocation={true}
                 region={
@@ -98,7 +99,7 @@ export default function MapsScreen({item, route}) {
                         key={gym.id}
                         coordinate={{latitude: gym.latitude, longitude: gym.longitude}}
                         title={gym.title.toString()}
-                        pinColor={highlightedGym  && highlightedGym.id === gym.id ? 'blue' : 'red'}
+                        pinColor={highlightedGym && highlightedGym.id === gym.id ? 'blue' : 'red'}
                     />
                 ))}
 

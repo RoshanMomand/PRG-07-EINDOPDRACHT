@@ -1,19 +1,18 @@
 import {useEffect, useState} from "react";
 import {Alert, FlatList, Modal, Pressable, StyleSheet, Switch, Text, TextInput, View} from "react-native";
+import {NavigationContainer, DefaultTheme, DarkTheme, useTheme} from "@react-navigation/native";
 import GymLocationCard from "../components/GymLocationCard";
 import Ionicons from "@expo/vector-icons/Ionicons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-
-function HomeScreen({navigation}) {
+function HomeScreen({navigation, route, darkMode}) {
     const [gymSpots, setGymSpots] = useState([]);
     const [isEnabled, setIsEnabled] = useState(false)
     const [searchGymSpots, setSearchGymSpots] = useState([]);
-    const [modalVisible, setModalVisible] = useState(false);
-
+    const [filterModalVisibility, setFilterModalVisibility] = useState(false); // Set the initial state on false so the modal is not visible
+    const [gymModalStatus,setGymModalStatus] = useState(false)
     const [favorites, setFavorites] = useState([]);
     const [searchvalue, setSearchvalue] = useState('')
-
 
     const handleSearch = (text) => {
         // Issue: You might need to convert the search text to lowercase for case-insensitive comparison.
@@ -32,6 +31,8 @@ function HomeScreen({navigation}) {
     };
 
     useEffect(() => {
+
+
         const fetchGyms = async () => {
             try {
                 const url = `https://stud.hosted.hr.nl/1028086/trainmore-spots/trainmore-locations.json?timestamp=${Date.now()}`;
@@ -66,10 +67,11 @@ function HomeScreen({navigation}) {
 
 
         }
-
-
         gymFavorites();
+
+
     }, []);
+
 
     const addToFavorites = async (item) => {
 
@@ -99,43 +101,22 @@ function HomeScreen({navigation}) {
     function favoriteToggleSwitch() {
         setIsEnabled(prevState => !prevState)
     }
+    const showGymInfoModal = (item) =>{
+        setGymModalStatus(true)
+    }
 
+    const styles = getStyles(darkMode)
     return (
-        // <View style={styles.container}>
-        //     <Modal
-        //         animationType="slide"
-        //         transparent={true}
-        //         visible={modalVisible}
-        //         onRequestClose={() => {
-        //             Alert.alert('Modal has been closed.');
-        //             setModalVisible(!modalVisible);
-        //         }}>
-        //         <View style={styles.container}>
-        //             <View style={styles.modalView}>
-        //                 <Pressable
-        //                     style={[styles.button, styles.buttonClose]}
-        //                     onPress={() => setModalVisible(!modalVisible)}>
-        //                     <Text style={styles.textStyle}>Hide Modal</Text>
-        //                 </Pressable>
-        //             </View>
-        //         </View>
-        //     </Modal>
-        //     <Pressable
-        //         style={[styles.button, styles.buttonOpen]}
-        //         onPress={() => setModalVisible(true)}>
-        //         <Text style={styles.textStyle}>Show Modal</Text>
-        //     </Pressable>
-        //     <Text>Welkom op het Home scherm!</Text>
-        // </View>
-        <View >
+        <View style={styles.hotspotsContainer}>
             <View style={styles.firstDiv}>
                 <View>
                     <Pressable style={styles.searchContainer}>
                         {/* Dit wordt een input met een place holder */}
-                        <TextInput style={styles.input} placeholder={'Search your gyms'} placeholderTextColor={'white'}
+                        <TextInput style={styles.input} placeholder={'Search your gyms'}
+                                   placeholderTextColor={darkMode ? 'black' : 'white'}
                                    value={searchvalue} onChangeText={handleSearch}>
                         </TextInput>
-                        <Ionicons name={'search'} color={'white'} size={20}/>
+                        <Ionicons name={'search'} color={darkMode ? 'black' : 'white'} size={20}/>
                     </Pressable>
                 </View>
 
@@ -145,34 +126,57 @@ function HomeScreen({navigation}) {
                     animationType={'slide'}
                     transparent={true}
                     // visiblitiy is false
-                    visible={modalVisible}>
+                    visible={filterModalVisibility}>
                     {/* In this view yoou will find the toggle switch. */}
                     <View style={styles.centeredView}>
                         <View style={styles.modalView}>
                             <View style={styles.modalFirstDiv}>
-                            <Text style={styles.modalInput}> Toggle favorites</Text>
-                            <Switch style={styles.filterContainer} trackColor={{false: '#767577', true: '#81b0ff'}}
-                                    onValueChange={favoriteToggleSwitch} value={isEnabled}>
-                            </Switch>
+                                <Text style={styles.modalInput}> Toggle favorites</Text>
+                                <Switch style={styles.filterContainer} trackColor={{false: '#767577', true: '#81b0ff'}}
+                                        onValueChange={favoriteToggleSwitch} value={isEnabled}>
+                                </Switch>
                             </View>
+
+                            {/* Pressable to close the modal */}
                             <Pressable
                                 style={[styles.button, styles.buttonClose]}
-                                onPress={() => setModalVisible(false)}>
+                                onPress={() => setFilterModalVisibility(false)}>
                                 <Text style={styles.textStyle}>Hide Modal</Text>
                             </Pressable>
                         </View>
                     </View>
                 </Modal>
                 <View>
-                    <Pressable on onPress={() =>{setModalVisible(true)}}>
-                            <Ionicons name={'filter-circle-sharp'} color={'black'} size={35}/>
-
+                    <Pressable
+                        onPress={() => {
+                            setFilterModalVisibility(true)
+                        }}>
+                        <Ionicons name={'filter-circle-sharp'} color={darkMode ? 'white' : 'black'} size={35}/>
                     </Pressable>
-
                 </View>
                 <View>
                 </View>
             </View>
+
+            <Modal
+                animationType={'slide'}
+                visible={gymModalStatus}
+            >
+                <View style={styles.centeredView}>
+                    <View style={styles.modalView}>
+                        <View style={styles.modalFirstDiv}>
+                            <Text style={styles.modalInput}></Text>
+                        </View>
+
+                        {/* Pressable to close the modal */}
+                        <Pressable
+                            style={[styles.button, styles.buttonClose]}
+                            onPress={() => setGymModalStatus(false)}>
+                            <Text style={styles.textStyle}>Hide Modal</Text>
+                        </Pressable>
+                    </View>
+                </View>
+            </Modal>
 
             {/* Mocht het gefilterd zijn laat een andere flatlist zien met de favoriete*/}
             {isEnabled ?
@@ -196,7 +200,9 @@ function HomeScreen({navigation}) {
                         renderItem={({item}) => (
                             <GymLocationCard addToFavorites={addToFavorites}
                                              isFavorite={favorites.some(favorite => favorite.id === item.id)}
-                                             navigation={navigation} item={item}/>
+                                             navigation={navigation} item={item}
+                                             showGymInfoModal={showGymInfoModal}
+                            />
                         )}
                         keyExtractor={item => item?.id}
                         numColumns={2}
@@ -209,89 +215,93 @@ function HomeScreen({navigation}) {
     );
 }
 
-const styles = StyleSheet.create({
-    centeredView: {
-        flex: 0.3,
-        margin:"auto",
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    modalView: {
-        backgroundColor: 'white',
-        borderRadius: 20,
-        padding: 20,
-        alignSelf: "center",
-        alignItems: 'center',
-        shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
+const getStyles = (darkMode) =>
+    StyleSheet.create({
+        hotspotsContainer: {
+            backgroundColor: darkMode ? 'black' : 'white',
         },
-        shadowOpacity: 0.25,
-        shadowRadius: 4,
-        elevation: 1,
-    },
-    button: {
-        borderRadius: 20,
-        padding: 10,
-        elevation: 2,
-    },
-    buttonOpen: {
-        backgroundColor: '#F194FF',
-    },
-    buttonClose: {
-        backgroundColor: '#2196F3',
-    },
-    textStyle: {
-        color: 'white',
-        fontWeight: 'bold',
-        textAlign: 'center',
-    },
-    modalText: {
-        marginBottom: 15,
-        textAlign: 'center',
-    },
-    firstDiv: {
-        display: 'flex',
-        flexDirection: 'row',
-        justifyContent: 'space-evenly',
-        alignItems: 'center',
-        marginHorizontal: 20,
-    },
-    searchContainer: {
-        flexDirection: 'row',
-        padding: 5,
-        paddingHorizontal: 20,
-        borderRadius: 100,
-        gap: 20,
-        alignItems: 'center',
-        backgroundColor: 'black',
-        marginVertical: 5,
-    },
-    filterContainer: {
-        flexDirection: 'row',
-        justifyContent: "center",
-        alignItems: 'center',
+        centeredView: {
+            flex: 0.3,
+            margin: "auto",
+            justifyContent: 'center',
+            alignItems: 'center',
+        },
+        modalView: {
+            backgroundColor: 'white',
+            borderRadius: 20,
+            padding: 20,
+            alignSelf: "center",
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: {
+                width: 0,
+                height: 2,
+            },
+            shadowOpacity: 0.25,
+            shadowRadius: 4,
+            elevation: 1,
+        },
+        button: {
+            borderRadius: 20,
+            padding: 10,
+            elevation: 2,
+        },
+        buttonOpen: {
+            backgroundColor: '#F194FF',
+        },
+        buttonClose: {
+            backgroundColor: '#2196F3',
+        },
+        textStyle: {
+            color: 'white',
+            fontWeight: 'bold',
+            textAlign: 'center',
+        },
+        modalText: {
+            marginBottom: 15,
+            textAlign: 'center',
+        },
+        firstDiv: {
+            display: 'flex',
+            flexDirection: 'row',
+            justifyContent: "center",
+            alignItems: 'center',
+            marginHorizontal: 20,
+        },
+        searchContainer: {
+            flexDirection: 'row',
+            padding: 5,
+            paddingHorizontal: 20,
+            borderRadius: 100,
+            gap: 20,
+            alignItems: 'center',
+            backgroundColor: darkMode ? 'white' : 'black',
+            marginVertical: 8,
+        },
+        filterContainer: {
+            flexDirection: 'row',
+            justifyContent: "center",
+            alignItems: 'center',
 
-    },
-    input: {
-        color: '#fff',
-        fontSize: '16',
-        fontWeight: 'bold',
-    },
-    modalInput: {
-        color: '#000',
-        fontSize: '16',
-        fontWeight: 'bold',
-    },
-    modalFirstDiv:{
-        display:"flex",
-        flexDirection:"row",
-        alignItems:"center",
-        gap:20,
-    }
+        },
+        input: {
+            fontSize: '16',
+            fontWeight: 'bold',
+            color: darkMode ? 'black' : 'white'
+        },
+        modalInput: {
+            color: '#000',
+            fontSize: '16',
+            fontWeight: 'bold',
+        },
+        modalFirstDiv: {
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 20,
+        }
 
-});
+    });
 
 
 export default HomeScreen

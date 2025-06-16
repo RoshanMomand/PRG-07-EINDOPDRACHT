@@ -6,7 +6,10 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {useNavigation} from "@react-navigation/native";
 import {useState} from "react";
 
-function GymLocationCard({item, navigation, addToFavorites, isFavorite}) {
+function GymLocationCard({item, navigation, addToFavorites, isFavorite,showGymInfoModal}) {
+
+
+
 
 
     return (
@@ -20,7 +23,9 @@ function GymLocationCard({item, navigation, addToFavorites, isFavorite}) {
                 </View>
                 <View>
                     <Pressable>
-                        <Ionicons name={'information'} size={30} color={'red'}/>
+                        <Ionicons onPress={() => {
+                            showGymInfoModal(item)
+                        }} name={'information'} size={30} color={'red'}/>
                     </Pressable>
                 </View>
                 <View>
