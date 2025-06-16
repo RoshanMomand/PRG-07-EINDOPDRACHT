@@ -1,140 +1,113 @@
-import MapView, {Marker} from 'react-native-maps';
-import {Pressable, ScrollView, StyleSheet, Text, View} from "react-native";
+import MapView, {Callout, Marker} from 'react-native-maps';
+import {Button, Image, Modal, Pressable, ScrollView, StyleSheet, Text, View} from "react-native";
 import * as Location from 'expo-location';
-import {useEffect, useState} from "react";
+import {useEffect, useState, createRef} from "react";
+import MapTopBarComponent from "../components/MapTopBarComponent";
+import MapDataHooks from "../hooks/MapDataHooks";
+import GymModalComponent from "../components/GymModalComponent";
+import MapTopBarHooks from "../hooks/MapTopBarHooks";
+import GymModalHooks from "../hooks/GymModalHooks";
+import {MaterialIcons} from "@expo/vector-icons";
 
-export default function MapsScreen({item, route}) {
-
+export default function MapsScreen({item, route, darkMode}) {
     const {selectedGym} = route?.params || {}
-    const [highlightedGym,setHighlightedGym] = useState(null)
-    const [location, setLocation] = useState(null)
-    const [gymLocations, setGymLocations] = useState([])
+
+    const {location, gymLocations} = MapDataHooks()
+
+    const {
+        handleMapType,
+        goToCurrentLocation,
+        handleEventSelector,
+        mapType,
+        mapRef,
+        highlightedGym
+    } = MapTopBarHooks(location, selectedGym);
 
 
-    async function getCurrentLocation() {
-
-        let {status} = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-            console.error('Permission to access location was denied');
-            return;
-        }
-        ;
+    const {openGymModal, closeGymModal, modalVisible, selectedGymInfo} = GymModalHooks();
 
 
-        // get the current location of the user and set it as the center of the map and it needs to be accurate
-        let currentLocation = await Location.getCurrentPositionAsync(
-            {
-                accuracy: Location.Accuracy.Highest,
-                timeInterval: 1000,
-                // distanceInterval:1000
-            }
-        )
-        setLocation({
-            latitude: currentLocation.coords.latitude,
-            longitude: currentLocation.coords.longitude
-            , latitudeDelta: 0.0005,
-            longitudeDelta: 0.0005,
-        })
-    };
-    useEffect(() => {
-        async function fetchGyms() {
-            try {
-                const url = `https://stud.hosted.hr.nl/1028086/trainmore-spots/trainmore-locations.json?timestamp=${Date.now()}`;
-                const response = await fetch(url, {
-                    method: "GET",
-                    headers: {
-                        Accept: "application/json"
-                    }
-                });
-                const data = await response.json()
-                setGymLocations(data);
-            } catch (e) {
-                console.log("Couldnt fetch data" + e)
-            }
-
-        }
-
-        fetchGyms();
-        getCurrentLocation();
-        if(selectedGym){
-            setHighlightedGym(selectedGym)
-            setTimeout(()=>{
-                setHighlightedGym(null)
-            },4000)
-            // SelectedGym contains the object with the info
-        }
-
-    }, []);
-    useEffect(() => {
-        // console.log('Updated gymLocations:', gymLocations);
-    }, [gymLocations]);
-
-
+    const styles = getStyles(darkMode)
     return (
         <View style={styles.container}>
 
-            <ScrollView style={styles.showAllGyms} horizontal={true}>
-                <Pressable>
-                    <Text>Hello</Text>
-                </Pressable>
+            <MapTopBarComponent
+                darkMode={darkMode}
+                handleMapType={handleMapType}
+                mapType={mapType}
+                goToCurrentLocation={goToCurrentLocation}
 
-            </ScrollView>
+            />
+
+
             <MapView
+                // Add a function or a ternary that checks if the button is click to change the map type
+                ref={mapRef}
+                mapType={mapType}
+                userInterfaceStyle={darkMode ? 'dark' : 'light'}
                 style={styles.map}
                 showsUserLocation={true}
                 region={
                     selectedGym ? {
                         latitude: selectedGym.latitude,
                         longitude: selectedGym.longitude,
-                        latitudeDelta: 0.001,
-                        longitudeDelta: 0.001
-                    } : location
-                }
+                        latitudeDelta: 0.005,
+                        longitudeDelta: 0.005
+                    } : location}
             >
-
-
                 {gymLocations.map((gym) => (
                     <Marker
+                        onSelect={() => handleEventSelector}
+                        onDeselect={() => handleEventSelector}
                         key={gym.id}
                         coordinate={{latitude: gym.latitude, longitude: gym.longitude}}
                         title={gym.title.toString()}
-                        pinColor={highlightedGym  && highlightedGym.id === gym.id ? 'blue' : 'red'}
-                    />
+                        pinColor={highlightedGym && highlightedGym.id === gym.id ? 'blue' : 'red'}
+                    >
+                        <Callout onPress={() => openGymModal(gym)}>
+                            <View style={{padding: 15}}>
+                                <Text style={{fontWeight: "bold",maxWidth:"100%" ,justifyContent:'center',textAlign:'center'}}>{gym.title}</Text>
+                                <Pressable style={styles.moreInfoButton}>
+                                    <Text style={styles.moreInfoText}>meer info</Text>
+                                </Pressable>
+
+                            </View>
+                        </Callout>
+                    </Marker>
                 ))}
-
-
-                {/*{selectedGym && (*/}
-                {/*    <Marker*/}
-                {/*        coordinate={{*/}
-                {/*            latitude: selectedGym.latitude,*/}
-                {/*            longitude: selectedGym.longitude*/}
-                {/*        }}*/}
-                {/*        title={selectedGym.title.toString()}*/}
-                {/*        pinColor={}*/}
-                {/*    />*/}
-                {/*)}*/}
             </MapView>
+
+            <GymModalComponent
+                visible={modalVisible}
+                gym={selectedGymInfo}
+                darkMode={darkMode}
+                onClose={closeGymModal}
+            />
 
         </View>
     )
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        justifyContent: 'center',
-    }, map: {
-        width: '100%',
-        height: '100%',
-    },
-    showAllGyms: {
-        backgroundColor: 'red',
-        showAllGymsColor: {
-
-            color: "black"
+const getStyles = (darkMode) =>
+    StyleSheet.create({
+        container: {
+            flex: 1,
+            justifyContent: 'center',
+        }, map: {
+            width: '100%',
+            height: '100%',
+        },moreInfoButton: {
+            backgroundColor: '#181818',
+            borderRadius: 8,
+            paddingVertical: 12,
+            paddingHorizontal: 45,
+            alignItems: 'center',
+            marginTop: 10,
         },
-        marginBottom: 100,
-    },
+        moreInfoText: {
+            color: 'white',
+            fontSize: 16,
+            fontWeight: '500',
+        }
 
-
-});
+    });
